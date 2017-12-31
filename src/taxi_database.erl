@@ -46,8 +46,10 @@ init([]) ->
 
 handle_call({add, Pid}, _From, Taxis) ->
   {reply, {added, Pid}, [Pid | Taxis]};
+
 handle_call(get, _From, Taxis) ->
   {reply, Taxis, Taxis};
+
 handle_call({remove, Pid}, _From, Taxis) ->
   case lists:member(Pid, Taxis) of
     true -> {reply, {removed, Pid}, lists:delete(Pid, Taxis)};
