@@ -5,9 +5,9 @@
 %% API
 -export([start_link/0,
   stop/1,
-  addTaxi/2,
-  removeTaxi/2,
-  getTaxis/1]).
+  add_taxi/2,
+  remove_taxi/2,
+  get_taxis/1]).
 
 %% gen_server callbacks
 -export([init/1,
@@ -24,16 +24,16 @@
 start_link() ->
   gen_server:start_link(?MODULE, [], []).
 
-addTaxi(Server, TaxiPid) ->
+add_taxi(Server, TaxiPid) when is_pid(Server) andalso is_pid(TaxiPid) ->
   gen_server:call(Server, {add, TaxiPid}).
 
-getTaxis(Server) ->
+get_taxis(Server) when is_pid(Server) ->
   gen_server:call(Server, get).
 
-removeTaxi(Server, TaxiPid) ->
+remove_taxi(Server, TaxiPid) when is_pid(Server) andalso is_pid(TaxiPid) ->
   gen_server:call(Server, {remove, TaxiPid}).
 
-stop(Server) ->
+stop(Server) when is_pid(Server) ->
   gen_server:stop(Server).
 
 
@@ -54,16 +54,16 @@ handle_call({remove, Pid}, _From, Taxis) ->
   case lists:member(Pid, Taxis) of
     true -> {reply, {removed, Pid}, lists:delete(Pid, Taxis)};
     _ -> {reply, not_exists, Taxis}
-  end.
+  end;
 
-handle_cast(_Msg, Taxis) ->
+handle_call(_Msg, _From, Taxis) ->
   {noreply, Taxis}.
 
-handle_info(_Info, Taxis) ->
-  {noreply, Taxis}.
 
-terminate(_Reason, _Taxis) ->
-  ok.
+handle_cast(_Msg, Taxis) -> {noreply, Taxis}.
 
-code_change(_OldVsn, Taxis, _Extra) ->
-  {ok, Taxis}.
+handle_info(_Info, Taxis) -> {noreply, Taxis}.
+
+terminate(_Reason, _Taxis) -> ok.
+
+code_change(_OldVsn, Taxis, _Extra) -> {ok, Taxis}.

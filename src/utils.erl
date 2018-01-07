@@ -1,6 +1,6 @@
 -module(utils).
 
--include("app_interface.hrl").
+-include("app_declarations.hrl").
 
 %% API
 -export([distance/2]).
