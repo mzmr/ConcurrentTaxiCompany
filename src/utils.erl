@@ -3,21 +3,33 @@
 -include("app_declarations.hrl").
 
 %% API
--export([distance/2, concurrent_map/2, run_function/3]).
+-export([distance/2, concurrent_map/2]).
+
+% private
+-export([run_function/3]).
+
+
+%%%===================================================================
+%%% API
+%%%===================================================================
 
 distance(#coords{x=X1, y=Y1}, #coords{x=X2, y=Y2}) ->
   math:sqrt(math:pow(X2 - X1, 2) + math:pow(Y2 - Y1, 2)).
 
-
-concurrent_map(List, Function) ->
-  try run_processes(List,Function) of
+concurrent_map(Function, List) ->
+  try run_processes(Function, List) of
     X -> X
   catch
     error:Error -> {error, Error};
     exit:Exit -> {exit, Exit}
   end.
 
-run_processes(List, Function) ->
+
+%%%===================================================================
+%%% private functions
+%%%===================================================================
+
+run_processes(Function, List) ->
   register(main_pid, self()),
   PidList = lists:map(fun(El) -> run_process(self(), El, Function) end, List),
   read_mapped_list(PidList, []).
