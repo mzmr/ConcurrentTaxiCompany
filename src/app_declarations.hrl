@@ -1,3 +1,0 @@
--record(coords, {x, y}).
--define(CITY_WIDTH, 10000).
--define(CITY_LENGTH, 10000).

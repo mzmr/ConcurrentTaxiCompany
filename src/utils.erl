@@ -1,6 +1,6 @@
 -module(utils).
 
--include("app_declarations.hrl").
+-include("app_config.hrl").
 
 %% API
 -export([distance/2, concurrent_map/2]).

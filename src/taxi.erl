@@ -2,16 +2,11 @@
 
 -behaviour(gen_statem).
 
--include("app_declarations.hrl").
+-include("app_config.hrl").
 
 -record(stats, {driven_total=0, driven_with_clients=0, jobs_done=0}).
 -record(client, {from, to}).
 -record(data, {home, stats=#stats{}, client=#client{}, return_timer}).
-
--define(WORK_TIME, 7000).
--define(BREAK_TIME, 7000).
--define(SPEED, 11). % meters per second
--define(MAX_JOB_LENGTH, 150). % meters
 
 %% API
 -export([start_link/0,

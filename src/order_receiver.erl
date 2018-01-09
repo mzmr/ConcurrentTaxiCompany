@@ -2,7 +2,7 @@
 
 -behaviour(gen_server).
 
--include("app_declarations.hrl").
+-include("app_config.hrl").
 
 %% API
 -export([start_link/1,
@@ -24,7 +24,8 @@
 start_link(TaxiDBAccess) when is_pid(TaxiDBAccess) ->
   gen_server:start_link(?MODULE, TaxiDBAccess, []).
 
-order_taxi(Receiver, Coords) when is_pid(Receiver) andalso is_record(Coords, coords) ->
+order_taxi(Receiver, Coords) when is_pid(Receiver)
+    andalso is_record(Coords, coords) ->
   gen_server:call(Receiver, {order_taxi, Coords}).
 
 stop(Receiver) when is_pid(Receiver) ->
