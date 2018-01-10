@@ -14,7 +14,7 @@
 %%%===================================================================
 
 start(OrderReceiver) ->
-  timer:sleep(?MIN_INTERVAL + (?MAX_INTERVAL - ?MIN_INTERVAL)*rand:uniform()),
+  timer:sleep(utils:random_number(?MIN_ORDER_INTERVAL, ?MAX_ORDER_INTERVAL)),
   spawn(?MODULE, run_client, [OrderReceiver]),
   start(OrderReceiver).
 
@@ -24,6 +24,4 @@ start(OrderReceiver) ->
 %%%===================================================================
 
 run_client(OrderReceiver) ->
-  X = ?CITY_WIDTH * rand:uniform(),
-  Y = ?CITY_LENGTH * rand:uniform(),
-  order_receiver:order_taxi(OrderReceiver, #coords{x=X, y=Y}).
+  order_receiver:order_taxi(OrderReceiver, utils:random_coords()).
