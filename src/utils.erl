@@ -3,7 +3,11 @@
 -include("app_config.hrl").
 
 %% API
--export([distance/2, concurrent_map/2]).
+-export([distance/2,
+  concurrent_map/2,
+  random_coords/0,
+  random_coords/2,
+  random_number/2]).
 
 % private
 -export([run_function/3]).
@@ -24,6 +28,22 @@ concurrent_map(Function, List) ->
     exit:Exit -> {exit, Exit}
   end.
 
+random_coords() ->
+  X = ?CITY_WIDTH * rand:uniform(),
+  Y = ?CITY_LENGTH * rand:uniform(),
+  #coords{x=X, y=Y}.
+
+random_coords(#coords{x=X, y=Y}, MAX_DISTANCE) ->
+  Distance = MAX_DISTANCE * rand:uniform(),
+  Angle = math:pi() * rand:uniform(),
+  NewX = X + Distance * math:sin(Angle),
+  NewY = Y + Distance * math:cos(Angle),
+  #coords{
+    x = min(max(NewX, 0), ?CITY_WIDTH),
+    y = min(max(NewY, 0), ?CITY_LENGTH)}.
+
+random_number(Min, Max) ->
+  Min + (Max - Min) * rand:uniform().
 
 %%%===================================================================
 %%% private functions
