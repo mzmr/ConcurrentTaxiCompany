@@ -65,15 +65,15 @@ callback_mode() ->
   [state_functions, state_enter].
 
 
-waiting(enter, OldState, Data)
-    when OldState == inactive orelse OldState == waiting ->
-  io:format("[taxi] Entering waiting state and clearing data~n"),
+waiting(enter, OldState, Data) when OldState == inactive
+    orelse OldState == waiting ->
+  entered_state(waiting, OldState),
   NewData = Data#data{stats=#stats{}, client=#client{}, return_timer=undefined},
   Timeout = {{timeout,end_of_work_tm}, ?WORK_TIME, finish_work},
   {keep_state, NewData, [Timeout]};
 
-waiting(enter, _OldState, _Data) ->
-  io:format("[taxi] Entering waiting state~n"),
+waiting(enter, OldState, _Data) ->
+  entered_state(waiting, OldState),
   keep_state_and_data;
 
 waiting({timeout,end_of_work_tm}, finish_work, Data) ->
@@ -89,8 +89,8 @@ waiting(EventType, EventContent, _Data) ->
   unsupported_event(EventType, EventContent).
 
 
-inactive(enter, _OldState, _Data) ->
-  io:format("[taxi] Entering inactive state~n"),
+inactive(enter, OldState, _Data) ->
+  entered_state(inactive, OldState),
   send_raport(),
   keep_state_and_data;
 
@@ -107,8 +107,8 @@ inactive(EventType, EventContent, _Data) ->
   unsupported_event(EventType, EventContent).
 
 
-driving_to_client(enter, _OldState, _Data) ->
-  io:format("[taxi] Entering driving_to_client state~n"),
+driving_to_client(enter, OldState, _Data) ->
+  entered_state(driving_to_client, OldState),
   keep_state_and_data;
 
 driving_to_client({call, From}, get_position, _Data) ->
@@ -119,7 +119,7 @@ driving_to_client({call, From}, {take_job, _ClientCoords}, _Data) ->
 
 driving_to_client({timeout,driven_to_client_tm}, {take_client, Driven},
     Data = #data{stats=S, client=C}) ->
-  Target = get_target(C#client.from),
+  Target = utils:random_coords(C#client.from, ?MAX_JOB_LENGTH),
   NewData = Data#data{
     stats = S#stats{driven_total = S#stats.driven_total + Driven},
     client = C#client{to = Target}},
@@ -135,8 +135,8 @@ driving_to_client(EventType, EventContent, _Data) ->
   unsupported_event(EventType, EventContent).
 
 
-driving_with_client(enter, _OldState, _Data) ->
-  io:format("[taxi] Entering driving_with_client state~n"),
+driving_with_client(enter, OldState, _Data) ->
+  entered_state(driving_with_client, OldState),
   keep_state_and_data;
 
 driving_with_client({call, From}, get_position, _Data) ->
@@ -165,8 +165,8 @@ driving_with_client(EventType, EventContent, _Data) ->
   unsupported_event(EventType, EventContent).
 
 
-driving_from_client(enter, _OldState, _Data) ->
-  io:format("[taxi] Entering driving_from_client state~n"),
+driving_from_client(enter, OldState, _Data) ->
+  entered_state(driving_from_client, OldState),
   keep_state_and_data;
 
 driving_from_client({call, From}, get_position, Data) ->
@@ -217,19 +217,6 @@ code_change(_Vsn, State, Data, _Extra) ->
 time_distance(Distance) ->
   round(Distance / ?SPEED * 1000).
 
-get_target(#coords{x=X, y=Y}) ->
-  #coords{
-    x = random_target_coord(X, ?CITY_WIDTH),
-    y = random_target_coord(Y, ?CITY_LENGTH)}.
-
-random_target_coord(Pivot, Max) ->
-  Coord = abs(Pivot + ?MAX_JOB_LENGTH * (2 - rand:uniform(3))),
-  fix_coord(Coord, Max).
-
-fix_coord(Coord, Max) when Coord > Max -> Max;
-fix_coord(Coord, _Max) when Coord < 0 -> 0;
-fix_coord(Coord, _Max) -> Coord.
-
 unsupported_event(EventType, EventContent) ->
   io:format("Unsupported event:~nType: ~p~nContent: ~p~n", [EventType, EventContent]),
   keep_state_and_data.
@@ -255,3 +242,7 @@ accept_job(MyPos, ClientPos, From, Data=#data{client=C}) ->
   Timeout = {{timeout,driven_to_client_tm}, DriveTime, {take_client,Distance}},
   Reply = {reply, From, job_accepted},
   {next_state, driving_to_client, NewData, [Reply, Timeout]}.
+
+entered_state(NewState, OldState) ->
+  io:format("[taxi] Entering ~p state~n", [NewState]),
+  stats:changed_taxi_state(NewState, OldState).
