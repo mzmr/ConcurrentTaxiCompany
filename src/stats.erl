@@ -21,6 +21,7 @@
 -export([start_link/0,
   stop/0,
   created_taxi/0,
+  terminated_taxi/0,
   changed_taxi_state/2,
   finished_order/0,
   started_order/0,
@@ -45,7 +46,10 @@ start_link() ->
   gen_server:start_link({local, ?SERVER}, ?MODULE, [], []).
 
 created_taxi() ->
-  gen_server:cast(?SERVER, created_taxi).
+  gen_server:cast(?SERVER, {changed_taxi_number, 1}).
+
+terminated_taxi() ->
+  gen_server:cast(?SERVER, {changed_taxi_number, -1}).
 
 changed_taxi_state(NewState, OldState) ->
   gen_server:cast(?SERVER, {changed_taxi_state, NewState, OldState}).
@@ -77,8 +81,8 @@ handle_cast({changed_taxi_state, State, State}, Data) ->
 handle_cast({changed_taxi_state, NewState, OldState}, Data) ->
   {noreply, change_state(OldState, -1, change_state(NewState, 1, Data))};
 
-handle_cast(created_taxi, Data) ->
-  {noreply, Data#data{taxi_number = Data#data.taxi_number + 1}};
+handle_cast({changed_taxi_number, Diff}, Data) ->
+  {noreply, Data#data{taxi_number = Data#data.taxi_number + Diff}};
 
 handle_cast(finished_order, Data) ->
   NewData = Data#data{
