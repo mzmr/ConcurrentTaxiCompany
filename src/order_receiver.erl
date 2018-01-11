@@ -40,6 +40,7 @@ init(TaxiDBAccess) ->
   {ok, TaxiDBAccess}.
 
 handle_call({order_taxi, Coords}, _From, TaxiDBAccess) ->
+  stats:accepted_order(),
   spawn(order_handler, handle_order, [Coords, TaxiDBAccess]),
   {reply, {order_accepted, Coords}, TaxiDBAccess};
 
