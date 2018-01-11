@@ -58,6 +58,7 @@ offer_job(Taxi) when is_pid(Taxi) ->
 %%%===================================================================
 
 init(Home) ->
+  stats:created_taxi(),
   process_flag(trap_exit, true),
   {ok, waiting, #data{home=Home}}.
 
@@ -147,6 +148,7 @@ driving_with_client({call, From}, {take_job, _ClientCoords}, _Data) ->
 
 driving_with_client({timeout,driven_with_client_tm}, {go_home,Driven},
     Data=#data{stats=S, client=C}) ->
+  stats:finished_order(),
   Distance = utils:distance(C#client.to, Data#data.home),
   DriveTime = time_distance(Distance),
   NewData = Data#data{
@@ -209,6 +211,7 @@ send_raport() ->
 terminate(_Reason, State, _Data) ->
   % dodać obsługę zakończenia życia procesu w czasie jazdy z klientem
   State =/= inactive andalso send_raport(),
+  stats:terminated_taxi(),
   ok.
 
 code_change(_Vsn, State, Data, _Extra) ->
@@ -236,6 +239,7 @@ percentage_of_return(Distance, Timer) ->
   1 - erlang:read_timer(Timer) / FullTime.
 
 accept_job(MyPos, ClientPos, From, Data=#data{client=C}) ->
+  stats:started_order(),
   Distance = utils:distance(MyPos, ClientPos),
   DriveTime = time_distance(Distance),
   NewData = Data#data{client=C#client{from=ClientPos}},
