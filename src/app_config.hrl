@@ -19,3 +19,6 @@
 % applicant
 -define(MIN_APPLICATION_INTERVAL, 10000). % miliseconds
 -define(MAX_APPLICATION_INTERVAL, 15000).
+
+% client_supervisor
+-define(CLIENTS_NUMBER, 100).
