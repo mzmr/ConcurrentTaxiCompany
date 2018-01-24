@@ -1,7 +1,17 @@
 -record(coords, {x, y}).
+-record(hr_office, {pid}).
+-record(order_receiver, {pid}).
+-record(taxi_db_access, {pid}).
+-record(taxi_db, {pid}).
+
+-define(DEBUG, on).
 
 -define(CITY_WIDTH, 10000). % meters
 -define(CITY_LENGTH, 10000).
+
+-define(CITIES_NUMBER, 3).
+-define(TAXI_DB_PER_CITY, 2).
+-define(RECEIVERS_PER_CITY, 3).
 
 % taxi
 -define(WORK_TIME, 7000). % miliseconds
@@ -21,4 +31,10 @@
 -define(MAX_APPLICATION_INTERVAL, 15000).
 
 % client_supervisor
--define(CLIENTS_NUMBER, 100).
+-define(CLIENTS_NUMBER, 5).
+
+% applicant_supervisor
+-define(APPLICANTS_NUMBER, 2).
+
+% panel
+-define(REFRESH_INTERVAL, 1000). % miliseconds

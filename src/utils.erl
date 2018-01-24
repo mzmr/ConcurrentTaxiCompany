@@ -8,7 +8,9 @@
   concurrent_foreach/2,
   random_coords/0,
   random_coords/2,
-  random_number/2]).
+  random_number/2,
+  get_supervisor_children_pids/1,
+  log_creating_process/1]).
 
 % private
 -export([]).
@@ -55,6 +57,22 @@ random_coords(#coords{x=X, y=Y}, MAX_DISTANCE) ->
 
 random_number(Min, Max) ->
   Min + (Max - Min) * rand:uniform().
+
+get_supervisor_children_pids(Supervisor) ->
+  ChildSpecs = supervisor:which_children(Supervisor),
+  FilterPidsFun = fun({_,C,_,_}) ->
+                    case is_pid(C) of
+                      true -> {true,C};
+                      _ -> false
+                    end
+                  end,
+  lists:filtermap(FilterPidsFun, ChildSpecs).
+
+log_creating_process(ModuleName) ->
+  case ?DEBUG of
+    on -> io:format("Creating ~p~n", [ModuleName]);
+    _ -> ok
+  end.
 
 %%%===================================================================
 %%% private functions

@@ -10,9 +10,10 @@
 %%% API
 %%%===================================================================
 
-handle_order(ClientCoords, TaxiDBAccess) when is_record(ClientCoords, coords)
-    andalso is_pid(TaxiDBAccess) ->
-  TaxiDB = taxi_database_access:get_taxi_db(TaxiDBAccess),
+handle_order(ClientCoords, #taxi_db_access{pid=P})
+    when is_record(ClientCoords, coords) andalso is_pid(P) ->
+  utils:log_creating_process(?MODULE),
+  #taxi_db{pid=TaxiDB} = taxi_database_access:get_taxi_db(P),
   Taxis = taxi_database:get_taxis(TaxiDB),
   DistanceFun = fun(T) -> distance_to_client(T, ClientCoords) end,
   Distances = utils:concurrent_map(DistanceFun, Taxis),

@@ -21,7 +21,8 @@
 %%% API
 %%%===================================================================
 
-start_link(TaxiDBAccess) when is_pid(TaxiDBAccess) ->
+start_link(TaxiDBAccess=#taxi_db_access{pid=P}) when is_pid(P) ->
+  utils:log_creating_process(?MODULE),
   gen_server:start_link(?MODULE, TaxiDBAccess, []).
 
 order_taxi(Receiver, Coords) when is_pid(Receiver)

@@ -1,4 +1,4 @@
--module(client_supervisor).
+-module(applicant_supervisor).
 
 -behaviour(supervisor).
 
@@ -26,27 +26,27 @@ start_link() ->
 
 init([]) ->
   SupFlags = #{strategy => one_for_one, intensity => 2, period => 5},
-  ReceiversPids = utils:get_supervisor_children_pids(order_receiver_supervisor),
-  Receivers = assign_clients_to_cities(ReceiversPids),
-  ChildSpecs = lists:flatmap(fun({R,N}) -> create_clients(N, R) end, Receivers),
+  HrOffices = utils:get_supervisor_children_pids(hr_office_supervisor),
+  Offices = assign_applicants_to_cities(HrOffices),
+  ChildSpecs = lists:flatmap(fun({O,N}) -> create_applicants(N, O) end, Offices),
   {ok, {SupFlags, ChildSpecs}}.
 
 %%%===================================================================
 %%% Internal functions
 %%%===================================================================
 
-assign_clients_to_cities(OrderReceivers) ->
-  WithWages = lists:map(fun(R) -> {R, rand:uniform()} end, OrderReceivers),
+assign_applicants_to_cities(HrOffices) ->
+  WithWages = lists:map(fun(O) -> {O, rand:uniform()} end, HrOffices),
   WagesSum = lists:foldl(fun({_,W}, A) -> A + W end, 0, WithWages),
-  Factor = ?CLIENTS_NUMBER / WagesSum,
-  lists:map(fun({R,W}) -> {R, round(W*Factor)} end, WithWages).
+  Factor = ?APPLICANTS_NUMBER / WagesSum,
+  lists:map(fun({O,W}) -> {O, round(W*Factor)} end, WithWages).
 
-create_clients(ClientsNumber, OrderReceiver) when is_integer(ClientsNumber)
-    andalso ClientsNumber > 0 ->
-  Client = #{
-    start => {client, start_link, [#order_receiver{pid=OrderReceiver}]},
+create_applicants(ApplicantsNumber, HrOffice) when is_integer(ApplicantsNumber)
+    andalso ApplicantsNumber > 0 ->
+  Applicant = #{
+    start => {applicant, start_link, [#hr_office{pid=HrOffice}]},
     restart => permanent,
     shutdown => brutal_kill,
     type => worker,
-    modules => [client]},
-  [Client#{id => erlang:unique_integer()} || _X <- lists:seq(1, ClientsNumber)].
+    modules => [applicant]},
+  [Applicant#{id => erlang:unique_integer()} || _X <- lists:seq(1, ApplicantsNumber)].
