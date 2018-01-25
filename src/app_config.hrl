@@ -34,7 +34,7 @@
 -define(CLIENTS_NUMBER, 5).
 
 % applicant_supervisor
--define(APPLICANTS_NUMBER, 2).
+-define(APPLICANTS_NUMBER, 4).
 
 % panel
 -define(REFRESH_INTERVAL, 1000). % miliseconds

@@ -31,7 +31,6 @@ start_link() ->
 init([]) ->
   SupFlags = #{strategy => one_for_one, intensity => 1, period => 5},
   Receivers = create_receivers(),
-
   {ok, {SupFlags, Receivers}}.
 
 %%%===================================================================
@@ -54,9 +53,9 @@ create_receivers_for_city(DBAccess, RecPerCity) when is_integer(RecPerCity)
 
 start_client_supervisor() ->
   OrderReceiverSup = #{id => erlang:unique_integer(),
-    start => {order_receiver_supervisor, start_link, []},
+    start => {client_supervisor, start_link, []},
     restart => permanent,
     shutdown => brutal_kill,
     type => supervisor,
-    modules => [order_receiver_supervisor]},
+    modules => [client_supervisor]},
   supervisor:start_child(main_supervisor, OrderReceiverSup).

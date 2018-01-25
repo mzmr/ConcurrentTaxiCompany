@@ -49,4 +49,7 @@ create_clients(ClientsNumber, OrderReceiver) when is_integer(ClientsNumber)
     shutdown => brutal_kill,
     type => worker,
     modules => [client]},
-  [Client#{id => erlang:unique_integer()} || _X <- lists:seq(1, ClientsNumber)].
+  [Client#{id => erlang:unique_integer()} || _X <- lists:seq(1, ClientsNumber)];
+
+create_clients(_ClientsNumber, _OrderReceiver) ->
+  [].

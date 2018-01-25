@@ -49,4 +49,7 @@ create_applicants(ApplicantsNumber, HrOffice) when is_integer(ApplicantsNumber)
     shutdown => brutal_kill,
     type => worker,
     modules => [applicant]},
-  [Applicant#{id => erlang:unique_integer()} || _X <- lists:seq(1, ApplicantsNumber)].
+  [Applicant#{id => erlang:unique_integer()} || _X <- lists:seq(1, ApplicantsNumber)];
+
+create_applicants(_ApplicantsNumber, _HrOffice) ->
+  [].

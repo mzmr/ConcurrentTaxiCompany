@@ -31,7 +31,8 @@ start_link(#hr_office{pid=O}) when is_pid(O) ->
 %%%===================================================================
 
 init(HrOffice) ->
-  Interval = utils:random_number(?MIN_APPLICATION_INTERVAL, ?MAX_APPLICATION_INTERVAL),
+  Interval = round(utils:random_number(?MIN_APPLICATION_INTERVAL,
+    ?MAX_APPLICATION_INTERVAL)),
   erlang:send_after(Interval, self(), apply_for_job),
   {ok, HrOffice}.
 
@@ -42,7 +43,8 @@ handle_cast(_Msg, HrOffice) -> {noreply, HrOffice}.
 
 handle_info(apply_for_job, HrOffice) ->
   spawn(?MODULE, run_applicant, [HrOffice]),
-  Interval = utils:random_number(?MIN_APPLICATION_INTERVAL, ?MAX_APPLICATION_INTERVAL),
+  Interval = round(utils:random_number(?MIN_APPLICATION_INTERVAL,
+    ?MAX_APPLICATION_INTERVAL)),
   erlang:send_after(Interval, self(), apply_for_job),
   {noreply, HrOffice};
 

@@ -31,7 +31,7 @@ start_link(#order_receiver{pid=R}) when is_pid(R) ->
 %%%===================================================================
 
 init(OrderReceiver) ->
-  Interval = utils:random_number(?MIN_ORDER_INTERVAL, ?MAX_ORDER_INTERVAL),
+  Interval = round(utils:random_number(?MIN_ORDER_INTERVAL, ?MAX_ORDER_INTERVAL)),
   erlang:send_after(Interval, self(), order_taxi),
   {ok, OrderReceiver}.
 
@@ -41,7 +41,7 @@ handle_cast(_Msg, OrderReceiver) -> {noreply, OrderReceiver}.
 
 handle_info(order_taxi, OrderReceiver) ->
   spawn(?MODULE, run_client, [OrderReceiver]),
-  Interval = utils:random_number(?MIN_ORDER_INTERVAL, ?MAX_ORDER_INTERVAL),
+  Interval = round(utils:random_number(?MIN_ORDER_INTERVAL, ?MAX_ORDER_INTERVAL)),
   erlang:send_after(Interval, self(), order_taxi),
   {noreply, OrderReceiver};
 
