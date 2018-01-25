@@ -20,7 +20,7 @@ start_link() ->
   utils:log_creating_process(?MODULE),
   DBAccesses = utils:get_supervisor_children_pids(taxi_database_access_supervisor),
   Result = supervisor:start_link({local, ?SERVER}, ?MODULE, DBAccesses),
-  create_taxis(?INITIAL_TAXI_NUMBER, DBAccesses),
+  create_taxis(?INITIAL_TAXI_PER_CITY_NUMBER, DBAccesses),
   Result.
 
 %%%===================================================================
@@ -48,8 +48,10 @@ create_databases_for_city(DBAccess, DBPerCity) when is_integer(DBPerCity)
 
 create_taxis(NumberOfTaxis, DBAccesses) when is_integer(NumberOfTaxis)
     andalso NumberOfTaxis > 0 andalso is_list(DBAccesses) ->
-  utils:concurrent_foreach(
-    fun(DBA) -> create_taxis_for_city(DBA, NumberOfTaxis) end, DBAccesses).
+  lists:foreach(
+    fun(DBA) -> create_taxis_for_city(DBA, NumberOfTaxis) end,
+    DBAccesses
+  ).
 
 create_taxis_for_city(DBAccess, NumberOfTaxis) ->
   lists:foreach(

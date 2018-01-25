@@ -27,9 +27,10 @@ handle_order(ClientCoords, #taxi_db_access{pid=P})
 %%%===================================================================
 
 distance_to_client(Taxi, ClientCoords) ->
-  TaxiCoords = taxi:get_position(Taxi),
-  Distance = utils:distance(TaxiCoords, ClientCoords),
-  {Taxi, Distance}.
+  case taxi:get_position(Taxi) of
+    busy -> {Taxi, busy};
+    TaxiCoords -> {Taxi, utils:distance(TaxiCoords, ClientCoords)}
+  end.
 
 offer_next([], _ClientCoords) ->
   rejected;

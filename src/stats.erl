@@ -130,35 +130,35 @@ init([]) ->
 
 
 handle_call({changed_taxi_state, State, State}, _From, Data) ->
-  {noreply, change_state(State, 1, Data)};
+  {reply, ok, change_state(State, 1, Data)};
 
 handle_call({changed_taxi_state, NewState, OldState}, _From, Data) ->
-  {noreply, change_state(OldState, -1, change_state(NewState, 1, Data))};
+  {reply, ok, change_state(OldState, -1, change_state(NewState, 1, Data))};
 
 handle_call({changed_taxi_number, Diff}, _From, Data) ->
-  {reply, taxi_added, Data#data{taxi_number = Data#data.taxi_number + Diff}};
+  {reply, ok, Data#data{taxi_number = Data#data.taxi_number + Diff}};
 
 handle_call(finished_order, _From, Data) ->
   NewData = Data#data{
     orders_in_progress = Data#data.orders_in_progress - 1,
     orders_finished = Data#data.orders_finished + 1},
-  {noreply, NewData};
+  {reply, ok, NewData};
 
 handle_call(accepted_order, _From, Data) ->
-  {noreply, Data#data{orders_accepted = Data#data.orders_accepted + 1}};
+  {reply, ok, Data#data{orders_accepted = Data#data.orders_accepted + 1}};
 
 handle_call(started_order, _From, Data) ->
-  {noreply, Data#data{orders_in_progress = Data#data.orders_in_progress + 1}};
+  {reply, ok, Data#data{orders_in_progress = Data#data.orders_in_progress + 1}};
 
 handle_call({driven_total, Distance}, _From, Data) ->
-  {noreply, Data#data{
+  {reply, ok, Data#data{
     total_distance_driven = Data#data.total_distance_driven + Distance}};
 
 handle_call({driven_with_client, Distance}, _From, Data) ->
   NewData = Data#data{
     distance_driven_with_client = Data#data.distance_driven_with_client + Distance,
     total_distance_driven = Data#data.total_distance_driven + Distance},
-  {noreply, NewData};
+  {reply, ok, NewData};
 
 
 handle_call(get_taxi_number, _From, Data) ->

@@ -15,8 +15,7 @@
   terminate/2,
   code_change/3]).
 
-%% private functions
--export([refresh/0]).
+
 
 -define(SERVER, ?MODULE).
 
@@ -33,7 +32,12 @@ start_link() ->
 %%%===================================================================
 
 init([]) ->
-  erlang:send_after(?REFRESH_INTERVAL, self(), refresh_panel),
+  case ?DEBUG of
+    on -> ok;
+    _ ->
+      print_description(),
+      erlang:send_after(?REFRESH_INTERVAL, self(), refresh_panel)
+  end,
   {ok, []}.
 
 handle_call(_Msg, _From, Data) -> {noreply, Data}.
@@ -55,39 +59,61 @@ code_change(_OldVsn, Data, _Extra) -> {ok, Data}.
 %%% private functions
 %%%===================================================================
 
+print_description() ->
+  L = 1,
+  Description = [
+    clear(),
+    printxy({L,1}, "TAXIS"),
+    printxy({L,2}, " - Total:"),
+    printxy({L,3}, " - Waiting:"),
+    printxy({L,4}, " - Inactive:"),
+    printxy({L,5}, " - Driving to clients:"),
+    printxy({L,6}, " - Driving with clients:"),
+    printxy({L,7}, " - Driving from clients:"),
+    printxy({L,9}, "ORDERS"),
+    printxy({L,10}, " - Total/accepted:"),
+    printxy({L,11}, " - In progress:"),
+    printxy({L,12}, " - Finished:"),
+    printxy({L,14}, "DRIVEN DISTANCE [KM]"),
+    printxy({L,15}, " - Total:"),
+    printxy({L,16}, " - With clients:"),
+    printxy({L,18}, "FINANCE [PLN]"),
+    printxy({L,19}, " - Income:"),
+    printxy({L,20}, " - Expenditure:"),
+    printxy({L,21}, " - Balance:"),
+    goto({L,23})
+  ],
+  io:format(lists:flatten(Description)).
+
 refresh() ->
-  case ?DEBUG of
-    on -> ok;
-    _ ->
-      Col2 = 55,
-      Summary = [
-        clear(),
-        printxy({1,1}, "Total number of taxis:"),
-        printxy({Col2,1}, stats:get_taxi_number()),
-        printxy({1,3}, "Number of taxis waiting for a job:"),
-        printxy({Col2,3}, stats:get_waiting_taxi_number()),
-        printxy({1,5}, "Number of inactive taxis:"),
-        printxy({Col2,5}, stats:get_inactive_taxi_number()),
-        printxy({1,7}, "Number of taxis driving with clients:"),
-        printxy({Col2,7}, stats:get_driving_with_client_taxi_number()),
-        printxy({1,9}, "Number of taxis driving to clients:"),
-        printxy({Col2,9}, stats:get_driving_to_client_taxi_number()),
-        printxy({1,11}, "Number of taxis driving from clients:"),
-        printxy({Col2,11}, stats:get_driving_from_client_taxi_number()),
-        printxy({1,13}, "Number of accepted orders:"),
-        printxy({Col2,13}, stats:get_accepted_orders_number()),
-        printxy({1,15}, "Number of orders in progress:"),
-        printxy({Col2,15}, stats:get_in_progress_orders_number()),
-        printxy({1,17}, "Number finished orders:"),
-        printxy({Col2,17}, stats:get_finished_orders_number()),
-        printxy({1,19}, "Total distance driven by all taxis:"),
-        printxy({Col2,19}, stats:get_total_distance_driven()),
-        printxy({1,21}, "Total distance driven by all taxis with clients:"),
-        printxy({Col2,21}, stats:get_distance_driven_with_client()),
-        goto({1,22})
-      ],
-      io:format(lists:flatten(Summary))
-  end.
+  R = 30,
+  TotalDriven = stats:get_total_distance_driven() / 1000,
+  DrivenWithClients = stats:get_distance_driven_with_client() / 1000,
+  FinishedOrders = stats:get_finished_orders_number(),
+  Income = FinishedOrders * ?ORDER_CONST_COST + DrivenWithClients * ?ONE_KM_COST,
+  Expenditure = TotalDriven * ?FUEL_LITER_COST * ?LITERS_PER_KM / 100,
+  Balance = Income - Expenditure,
+  Summary = [
+    printxy({R,2}, stats:get_taxi_number()),
+    printxy({R,3}, stats:get_waiting_taxi_number()),
+    printxy({R,4}, stats:get_inactive_taxi_number()),
+    printxy({R,5}, stats:get_driving_to_client_taxi_number()),
+    printxy({R,6}, stats:get_driving_with_client_taxi_number()),
+    printxy({R,7}, stats:get_driving_from_client_taxi_number()),
+    printxy({R,10}, stats:get_accepted_orders_number()),
+    printxy({R,11}, stats:get_in_progress_orders_number()),
+    printxy({R,12}, FinishedOrders),
+    printxy({R,15}, round_2_places(TotalDriven)),
+    printxy({R,16}, round_2_places(DrivenWithClients)),
+    printxy({R,19}, round_2_places(Income)),
+    printxy({R,20}, round_2_places(Expenditure)),
+    printxy({R,21}, round_2_places(Balance)),
+    goto({1,23})
+  ],
+  io:format(lists:flatten(Summary)).
+
+round_2_places(Number) when is_float(Number) ->
+  float_to_list(Number,[{decimals,2}]).
 
 clear() ->
   io_lib:format("\e[2J",[]).
@@ -99,4 +125,4 @@ printxy({X, Y}, Msg) when is_list(Msg)->
   io_lib:format("\e[~p;~pH" ++ Msg, [Y,X]);
 
 printxy({X, Y}, Msg) ->
-  io_lib:format("\e[~p;~pH~p",[Y,X,Msg]).
+  io_lib:format("\e[~p;~pH~p                    ",[Y,X,Msg]).

@@ -80,7 +80,7 @@ waiting({call, From}, get_position, #data{home=H}) ->
   {keep_state_and_data, [{reply, From, H}]};
 
 waiting(EventType, EventContent, _Data) ->
-  unsupported_event(EventType, EventContent).
+  unsupported_event(EventType, EventContent, waiting).
 
 
 inactive(enter, OldState, _Data) ->
@@ -97,7 +97,7 @@ inactive({call, From}, {take_job, _ClientCoords}, _Data) ->
   reject_job(From);
 
 inactive(EventType, EventContent, _Data) ->
-  unsupported_event(EventType, EventContent).
+  unsupported_event(EventType, EventContent, inactive).
 
 
 driving_to_client(enter, OldState, _Data) ->
@@ -124,7 +124,7 @@ driving_to_client({timeout,end_of_work_tm}, finish_work, Data) ->
   {keep_state, Data, [postpone]};
 
 driving_to_client(EventType, EventContent, _Data) ->
-  unsupported_event(EventType, EventContent).
+  unsupported_event(EventType, EventContent, driving_to_client).
 
 
 driving_with_client(enter, OldState, _Data) ->
@@ -152,7 +152,7 @@ driving_with_client({timeout,end_of_work_tm}, finish_work, Data) ->
   {keep_state, Data, [postpone]};
 
 driving_with_client(EventType, EventContent, _Data) ->
-  unsupported_event(EventType, EventContent).
+  unsupported_event(EventType, EventContent, driving_with_client).
 
 
 driving_from_client(enter, OldState, _Data) ->
@@ -163,7 +163,9 @@ driving_from_client({call, From}, get_position, Data) ->
   {keep_state_and_data, [{reply, From, current_position(Data)}]};
 
 driving_from_client({call, From}, {take_job, ClientCoords}, Data) ->
-  accept_job(current_position(Data), ClientCoords, From, Data);
+  CurrentPosition = current_position(Data),
+  NewData = broken_return(Data),
+  accept_job(CurrentPosition, ClientCoords, From, NewData);
 
 driving_from_client(info, {timeout,T,{start_waiting, Driven}},
     Data=#data{return_timer=T}) ->
@@ -171,17 +173,18 @@ driving_from_client(info, {timeout,T,{start_waiting, Driven}},
   NewData = Data#data{return_timer = undefined},
   {next_state, waiting, NewData};
 
-driving_from_client({timeout,end_of_work_tm}, finish_work,
-    Data=#data{home=H, client=C, return_timer=T}) ->
-  Distance = utils:distance(C#client.to, H),
-  stats:driven_total(Distance * percentage_of_return(Distance, T)),
-  erlang:cancel_timer(T, [{async, true}, {info, false}]),
-  NewData = Data#data{client = #client{}, return_timer = undefined},
+driving_from_client({timeout,end_of_work_tm}, finish_work, Data) ->
+  NewData = broken_return(Data),
   finish_work(NewData);
 
 driving_from_client(EventType, EventContent, _Data) ->
-  unsupported_event(EventType, EventContent).
+  unsupported_event(EventType, EventContent, driving_from_client).
 
+broken_return(Data=#data{home=H, client=C, return_timer=T}) ->
+  Distance = utils:distance(C#client.to, H),
+  stats:driven_total(Distance * percentage_of_return(Distance, T)),
+  erlang:cancel_timer(T, [{async, true}, {info, false}]),
+  Data#data{client = #client{}, return_timer = undefined}.
 
 reply_busy(From) ->
   {keep_state_and_data, [{reply, From, busy}]}.
@@ -200,8 +203,9 @@ code_change(_Vsn, State, Data, _Extra) ->
 time_distance(Distance) ->
   round(Distance / ?SPEED * 1000).
 
-unsupported_event(EventType, EventContent) ->
-  io:format("Unsupported event:~nType: ~p~nContent: ~p~n", [EventType, EventContent]),
+unsupported_event(EventType, EventContent, State) ->
+  io:format("[taxi] Unsupported event:~nType: ~p~nContent: ~p~nCurrent state: ~p~n",
+    [EventType, EventContent, State]),
   keep_state_and_data.
 
 finish_work(Data) ->
@@ -228,11 +232,12 @@ accept_job(MyPos, ClientPos, From, Data=#data{client=C}) ->
   {next_state, driving_to_client, NewData, [Reply, Timeout]}.
 
 entered_state(NewState, OldState) ->
-%%  io:format("[taxi] Entering ~p state~n", [NewState]),
+%%  io:format("[taxi][~p] Entering ~p state~n", [self(), NewState]),
   stats:changed_taxi_state(NewState, OldState).
 
 register_to_db(TaxiDBAccess) ->
-  AddNewTaxiFun = fun(DB) -> taxi_database:add_taxi(DB, self()) end,
+  TaxiPid = self(),
+  AddNewTaxiFun = fun(DB) -> taxi_database:add_taxi(DB, TaxiPid) end,
   TaxiDBs = taxi_database_access:get_all_taxi_db(TaxiDBAccess),
   utils:concurrent_map(AddNewTaxiFun, TaxiDBs),
   ok.
