@@ -10,7 +10,9 @@
   random_coords/2,
   random_number/2,
   get_supervisor_children_pids/1,
-  log_creating_process/1]).
+  log_creating_process/1,
+  create_child_spec/2,
+  create_child_spec/3]).
 
 % private
 -export([]).
@@ -25,12 +27,7 @@ distance(#coords{x=X1, y=Y1}, #coords{x=X2, y=Y2}) ->
 
 concurrent_map(Function, List) when is_function(Function, 1)
     andalso is_list(List) ->
-  try map_run_processes(Function, List) of
-    X -> X
-  catch
-    error:Error -> {error, Error};
-    exit:Exit -> {exit, Exit}
-  end.
+  map_run_processes(Function, List).
 
 concurrent_foreach(Function, List) when is_function(Function, 1)
     andalso is_list(List) ->
@@ -73,6 +70,17 @@ log_creating_process(ModuleName) ->
     on -> io:format("Creating ~p~n", [ModuleName]);
     _ -> ok
   end.
+
+create_child_spec(Module, Worker) ->
+  create_child_spec(Module, Worker, []).
+
+create_child_spec(Module, Worker, Args) ->
+  #{id => erlang:unique_integer(),
+    start => {Module, start_link, Args},
+    restart => permanent,
+    shutdown => brutal_kill,
+    type => Worker,
+    modules => [Module]}.
 
 %%%===================================================================
 %%% private functions

@@ -50,11 +50,11 @@ init(TaxiDBAccess) ->
   taxi_database_access:add_taxi_db(TaxiDBAccess, self()),
   {ok, #data{dbaccess = TaxiDBAccess}}.
 
-handle_call(get, _From, Taxis) ->
-  {reply, Taxis, Taxis};
+handle_call(get, _From, Data) ->
+  {reply, Data#data.taxis, Data};
 
-handle_call(_Msg, _From, Taxis) ->
-  {noreply, Taxis}.
+handle_call(_Msg, _From, Data) ->
+  {noreply, Data}.
 
 
 handle_cast({add, Pid}, D=#data{taxis=T}) ->

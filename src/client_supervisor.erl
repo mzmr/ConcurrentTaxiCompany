@@ -43,13 +43,8 @@ assign_clients_to_cities(OrderReceivers) ->
 
 create_clients(ClientsNumber, OrderReceiver) when is_integer(ClientsNumber)
     andalso ClientsNumber > 0 ->
-  Client = #{
-    start => {client, start_link, [#order_receiver{pid=OrderReceiver}]},
-    restart => permanent,
-    shutdown => brutal_kill,
-    type => worker,
-    modules => [client]},
-  [Client#{id => erlang:unique_integer()} || _X <- lists:seq(1, ClientsNumber)];
+  [utils:create_child_spec(client, worker, [#order_receiver{pid=OrderReceiver}])
+    || _X <- lists:seq(1, ClientsNumber)];
 
 create_clients(_ClientsNumber, _OrderReceiver) ->
   [].

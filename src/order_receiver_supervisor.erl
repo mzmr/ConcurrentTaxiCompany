@@ -18,11 +18,7 @@
 
 start_link() ->
   utils:log_creating_process(?MODULE),
-  Result = supervisor:start_link({local, ?SERVER}, ?MODULE, []),
-  case Result of
-    {ok, _Pid} -> spawn(fun start_client_supervisor/0)
-  end,
-  Result.
+  supervisor:start_link({local, ?SERVER}, ?MODULE, []).
 
 %%%===================================================================
 %%% Supervisor callbacks
@@ -43,19 +39,5 @@ create_receivers() ->
 
 create_receivers_for_city(DBAccess, RecPerCity) when is_integer(RecPerCity)
     andalso RecPerCity > 0 ->
-  Receiver = #{
-    start => {order_receiver, start_link, [#taxi_db_access{pid=DBAccess}]},
-    restart => permanent,
-    shutdown => brutal_kill,
-    type => worker,
-    modules => [order_receiver] },
-  [Receiver#{id => erlang:unique_integer()} || _X <- lists:seq(1,RecPerCity)].
-
-start_client_supervisor() ->
-  OrderReceiverSup = #{id => erlang:unique_integer(),
-    start => {client_supervisor, start_link, []},
-    restart => permanent,
-    shutdown => brutal_kill,
-    type => supervisor,
-    modules => [client_supervisor]},
-  supervisor:start_child(main_supervisor, OrderReceiverSup).
+  [utils:create_child_spec(order_receiver, worker, [#taxi_db_access{pid=DBAccess}])
+    || _X <- lists:seq(1,RecPerCity)].

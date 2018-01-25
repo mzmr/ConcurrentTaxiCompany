@@ -43,13 +43,8 @@ assign_applicants_to_cities(HrOffices) ->
 
 create_applicants(ApplicantsNumber, HrOffice) when is_integer(ApplicantsNumber)
     andalso ApplicantsNumber > 0 ->
-  Applicant = #{
-    start => {applicant, start_link, [#hr_office{pid=HrOffice}]},
-    restart => permanent,
-    shutdown => brutal_kill,
-    type => worker,
-    modules => [applicant]},
-  [Applicant#{id => erlang:unique_integer()} || _X <- lists:seq(1, ApplicantsNumber)];
+  [utils:create_child_spec(applicant, worker, [#hr_office{pid=HrOffice}])
+    || _X <- lists:seq(1, ApplicantsNumber)];
 
 create_applicants(_ApplicantsNumber, _HrOffice) ->
   [].

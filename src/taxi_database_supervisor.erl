@@ -18,56 +18,41 @@
 
 start_link() ->
   utils:log_creating_process(?MODULE),
-  Result = supervisor:start_link({local, ?SERVER}, ?MODULE, []),
-  case Result of
-    {ok, _Pid} ->
-      spawn(fun start_hr_office_supervisor/0),
-      spawn(fun start_order_receiver_supervisor/0)
-  end,
+  DBAccesses = utils:get_supervisor_children_pids(taxi_database_access_supervisor),
+  Result = supervisor:start_link({local, ?SERVER}, ?MODULE, DBAccesses),
+  create_taxis(?INITIAL_TAXI_NUMBER, DBAccesses),
   Result.
 
 %%%===================================================================
 %%% Supervisor callbacks
 %%%===================================================================
 
-init([]) ->
+init(DBAccesses) ->
   SupFlags = #{strategy => one_for_one, intensity => 1, period => 5},
-  Databases = create_databases(),
+  Databases = create_databases(DBAccesses),
   {ok, {SupFlags, Databases}}.
 
 %%%===================================================================
 %%% Internal functions
 %%%===================================================================
 
-create_databases() ->
+create_databases(DBAccesses) ->
   lists:flatmap(fun(Pid) -> create_databases_for_city(Pid, ?TAXI_DB_PER_CITY) end,
-    utils:get_supervisor_children_pids(taxi_database_access_supervisor)).
+    DBAccesses).
 
 create_databases_for_city(DBAccess, DBPerCity) when is_integer(DBPerCity)
     andalso DBPerCity > 0 ->
-  Database = #{
-    start => {taxi_database, start_link, [#taxi_db_access{pid=DBAccess}]},
-    restart => permanent,
-    shutdown => brutal_kill,
-    type => worker,
-    modules => [taxi_database] },
+  Database = utils:create_child_spec(taxi_database, worker,
+    [#taxi_db_access{pid=DBAccess}]),
   [Database#{id => erlang:unique_integer()} || _X <- lists:seq(1,DBPerCity)].
 
-start_hr_office_supervisor() ->
-  HrOfficeSup = #{id => erlang:unique_integer(),
-    start => {hr_office_supervisor, start_link, []},
-    restart => permanent,
-    shutdown => brutal_kill,
-    type => supervisor,
-    modules => [hr_office_supervisor]},
-  supervisor:start_child(main_supervisor, HrOfficeSup).
+create_taxis(NumberOfTaxis, DBAccesses) when is_integer(NumberOfTaxis)
+    andalso NumberOfTaxis > 0 andalso is_list(DBAccesses) ->
+  utils:concurrent_foreach(
+    fun(DBA) -> create_taxis_for_city(DBA, NumberOfTaxis) end, DBAccesses).
 
-
-start_order_receiver_supervisor() ->
-  OrderReceiverSup = #{id => erlang:unique_integer(),
-    start => {order_receiver_supervisor, start_link, []},
-    restart => permanent,
-    shutdown => brutal_kill,
-    type => supervisor,
-    modules => [order_receiver_supervisor]},
-  supervisor:start_child(main_supervisor, OrderReceiverSup).
+create_taxis_for_city(DBAccess, NumberOfTaxis) ->
+  lists:foreach(
+    fun(_X) -> taxi:start_link(utils:random_coords(), #taxi_db_access{pid=DBAccess}) end,
+    lists:seq(1, NumberOfTaxis)
+  ).

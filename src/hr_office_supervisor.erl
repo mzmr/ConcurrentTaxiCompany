@@ -18,11 +18,7 @@
 
 start_link() ->
   utils:log_creating_process(?MODULE),
-  Result = supervisor:start_link({local, ?SERVER}, ?MODULE, []),
-  case Result of
-    {ok, _Pid} -> spawn(fun start_applicant_supervisor/0)
-  end,
-  Result.
+  supervisor:start_link({local, ?SERVER}, ?MODULE, []).
 
 %%%===================================================================
 %%% Supervisor callbacks
@@ -38,22 +34,7 @@ init([]) ->
 %%%===================================================================
 
 create_offices(DBAccesses) ->
-  Office = #{
-    restart => permanent,
-    shutdown => brutal_kill,
-    type => worker,
-    modules => [hr_office] },
-  Fun = fun(P) -> Office#{
-          id => erlang:unique_integer(),
-          start => {hr_office, start_link, [#taxi_db_access{pid=P}]} }
+  Fun = fun(P) ->
+          utils:create_child_spec(hr_office, worker, [#taxi_db_access{pid=P}])
         end,
   lists:map(Fun, DBAccesses).
-
-start_applicant_supervisor() ->
-  ApplicantSup = #{id => erlang:unique_integer(),
-    start => {applicant_supervisor, start_link, []},
-    restart => permanent,
-    shutdown => brutal_kill,
-    type => supervisor,
-    modules => [applicant_supervisor]},
-  supervisor:start_child(main_supervisor, ApplicantSup).

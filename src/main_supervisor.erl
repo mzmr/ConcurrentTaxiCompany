@@ -2,8 +2,6 @@
 
 -behaviour(supervisor).
 
--include("app_config.hrl").
-
 %% API
 -export([start_link/0]).
 
@@ -27,25 +25,10 @@ start_link() ->
 init([]) ->
   SupFlags = #{strategy => rest_for_one, intensity => 1, period => 10},
 
-  StatsGS = #{id => erlang:unique_integer(),
-    start => {stats, start_link, []},
-    restart => permanent,
-    shutdown => brutal_kill,
-    type => worker,
-    modules => [stats]},
+  StatsGS = utils:create_child_spec(stats, worker),
+  PanelGS = utils:create_child_spec(panel, worker),
+  TaxiDBAccessSup = utils:create_child_spec(taxi_database_access_supervisor, supervisor),
+  TaxiDBSup = utils:create_child_spec(taxi_database_supervisor, supervisor),
+  SecondLvlSup = utils:create_child_spec(second_level_supervisor, supervisor),
 
-  PanelGS = #{id => erlang:unique_integer(),
-    start => {panel, start_link, []},
-    restart => permanent,
-    shutdown => brutal_kill,
-    type => worker,
-    modules => [panel]},
-
-  TaxiDBAccessSup = #{id => erlang:unique_integer(),
-    start => {taxi_database_access_supervisor, start_link, []},
-    restart => permanent,
-    shutdown => brutal_kill,
-    type => supervisor,
-    modules => [taxi_database_access_supervisor]},
-
-  {ok, {SupFlags, [StatsGS, PanelGS, TaxiDBAccessSup]}}.
+  {ok, {SupFlags, [StatsGS, PanelGS, TaxiDBAccessSup, TaxiDBSup, SecondLvlSup]}}.

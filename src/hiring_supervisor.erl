@@ -1,8 +1,6 @@
--module(taxi_database_access_supervisor).
+-module(hiring_supervisor).
 
 -behaviour(supervisor).
-
--include("app_config.hrl").
 
 %% API
 -export([start_link/0]).
@@ -18,15 +16,16 @@
 
 start_link() ->
   utils:log_creating_process(?MODULE),
-  supervisor:start_link({local, ?SERVER}, ?MODULE, ?CITIES_NUMBER).
+  supervisor:start_link({local, ?SERVER}, ?MODULE, []).
 
 %%%===================================================================
 %%% Supervisor callbacks
 %%%===================================================================
 
-init(NumberOfCities) when is_integer(NumberOfCities)
-    andalso NumberOfCities >= 0 ->
-  AllDBAccesses = [utils:create_child_spec(taxi_database_access, worker) ||
-    _X <- lists:seq(1, NumberOfCities)],
-  SupFlags = #{strategy => one_for_one, intensity => 1, period => 4},
-  {ok, {SupFlags, AllDBAccesses}}.
+init([]) ->
+  SupFlags = #{strategy => rest_for_one, intensity => 1, period => 10},
+
+  HrOfficeSup = utils:create_child_spec(hr_office_supervisor, supervisor),
+  ApplicantSup = utils:create_child_spec(applicant_supervisor, supervisor),
+
+  {ok, {SupFlags, [HrOfficeSup, ApplicantSup]}}.
