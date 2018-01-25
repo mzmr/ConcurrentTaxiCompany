@@ -59,28 +59,28 @@ start_link() ->
   gen_server:start_link({local, ?SERVER}, ?MODULE, [], []).
 
 created_taxi() ->
-  gen_server:cast(?SERVER, {changed_taxi_number, 1}).
+  gen_server:call(?SERVER, {changed_taxi_number, 1}).
 
 terminated_taxi() ->
-  gen_server:cast(?SERVER, {changed_taxi_number, -1}).
+  gen_server:call(?SERVER, {changed_taxi_number, -1}).
 
 changed_taxi_state(NewState, OldState) ->
-  gen_server:cast(?SERVER, {changed_taxi_state, NewState, OldState}).
+  gen_server:call(?SERVER, {changed_taxi_state, NewState, OldState}).
 
 accepted_order() ->
-  gen_server:cast(?SERVER, accepted_order).
+  gen_server:call(?SERVER, accepted_order).
 
 started_order() ->
-  gen_server:cast(?SERVER, started_order).
+  gen_server:call(?SERVER, started_order).
 
 finished_order() ->
-  gen_server:cast(?SERVER, finished_order).
+  gen_server:call(?SERVER, finished_order).
 
 driven_total(Distance) ->
-  gen_server:cast(?SERVER, {driven_total, Distance}).
+  gen_server:call(?SERVER, {driven_total, Distance}).
 
 driven_with_client(Distance) ->
-  gen_server:cast(?SERVER, {driven_with_client, Distance}).
+  gen_server:call(?SERVER, {driven_with_client, Distance}).
 
 
 get_taxi_number() ->
@@ -129,39 +129,37 @@ init([]) ->
   {ok, #data{}}.
 
 
-handle_cast({changed_taxi_state, State, State}, Data) ->
+handle_call({changed_taxi_state, State, State}, _From, Data) ->
   {noreply, change_state(State, 1, Data)};
 
-handle_cast({changed_taxi_state, NewState, OldState}, Data) ->
+handle_call({changed_taxi_state, NewState, OldState}, _From, Data) ->
   {noreply, change_state(OldState, -1, change_state(NewState, 1, Data))};
 
-handle_cast({changed_taxi_number, Diff}, Data) ->
-  {noreply, Data#data{taxi_number = Data#data.taxi_number + Diff}};
+handle_call({changed_taxi_number, Diff}, _From, Data) ->
+  {reply, taxi_added, Data#data{taxi_number = Data#data.taxi_number + Diff}};
 
-handle_cast(finished_order, Data) ->
+handle_call(finished_order, _From, Data) ->
   NewData = Data#data{
     orders_in_progress = Data#data.orders_in_progress - 1,
     orders_finished = Data#data.orders_finished + 1},
   {noreply, NewData};
 
-handle_cast(accepted_order, Data) ->
+handle_call(accepted_order, _From, Data) ->
   {noreply, Data#data{orders_accepted = Data#data.orders_accepted + 1}};
 
-handle_cast(started_order, Data) ->
+handle_call(started_order, _From, Data) ->
   {noreply, Data#data{orders_in_progress = Data#data.orders_in_progress + 1}};
 
-handle_cast({driven_total, Distance}, Data) ->
+handle_call({driven_total, Distance}, _From, Data) ->
   {noreply, Data#data{
     total_distance_driven = Data#data.total_distance_driven + Distance}};
 
-handle_cast({driven_with_client, Distance}, Data) ->
+handle_call({driven_with_client, Distance}, _From, Data) ->
   NewData = Data#data{
     distance_driven_with_client = Data#data.distance_driven_with_client + Distance,
     total_distance_driven = Data#data.total_distance_driven + Distance},
   {noreply, NewData};
 
-handle_cast(_Msg, Data) ->
-  {noreply, Data}.
 
 handle_call(get_taxi_number, _From, Data) ->
   {reply, Data#data.taxi_number, Data};
@@ -198,6 +196,9 @@ handle_call(get_distance_driven_with_client, _From, Data) ->
 
 handle_call(Request, _From, Data) ->
   {reply, Request, Data}.
+
+
+handle_cast(_Msg, Data) -> {noreply, Data}.
 
 handle_info(_Info, Data) -> {noreply, Data}.
 

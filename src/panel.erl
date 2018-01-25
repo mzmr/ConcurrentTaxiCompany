@@ -95,8 +95,8 @@ clear() ->
 goto({X, Y}) ->
   io_lib:format("\e[~p;~pH",[Y,X]).
 
-printxy(Coords, Number) when is_integer(Number) ->
-  printxy(Coords, integer_to_list(Number));
+printxy({X, Y}, Msg) when is_list(Msg)->
+  io_lib:format("\e[~p;~pH" ++ Msg, [Y,X]);
 
 printxy({X, Y}, Msg) ->
-  list_to_bitstring(io_lib:format("\e[~p;~pH~p",[Y,X,Msg])).
+  io_lib:format("\e[~p;~pH~p",[Y,X,Msg]).
