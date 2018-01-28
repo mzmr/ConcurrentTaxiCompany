@@ -75,10 +75,14 @@ create_child_spec(Module, Worker) ->
   create_child_spec(Module, Worker, []).
 
 create_child_spec(Module, Worker, Args) ->
+  Shutdown = case Worker of
+               supervisor -> infinity;
+               _ -> brutal_kill
+             end,
   #{id => erlang:unique_integer(),
     start => {Module, start_link, Args},
     restart => permanent,
-    shutdown => brutal_kill,
+    shutdown => Shutdown,
     type => Worker,
     modules => [Module]}.
 
