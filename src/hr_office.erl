@@ -21,9 +21,9 @@
 %%% API
 %%%===================================================================
 
-start_link(DBA=#taxi_db_access{pid=P}) when is_pid(P) ->
+start_link(#taxi_sup{pid=P}) when is_pid(P) ->
   utils:log_creating_process(?MODULE),
-  gen_server:start_link(?MODULE, DBA, []).
+  gen_server:start_link(?MODULE, P, []).
 
 apply_for_job(Office) when is_pid(Office) ->
   gen_server:call(Office, apply_for_job).
@@ -36,25 +36,25 @@ stop(Office) when is_pid(Office) ->
 %%% private functions
 %%%===================================================================
 
-init(TaxiDBAccess) ->
-  {ok, TaxiDBAccess}.
+init(TaxiSup) ->
+  {ok, TaxiSup}.
 
-handle_call(apply_for_job, _From, TaxiDBAccess) ->
+handle_call(apply_for_job, _From, TaxiSup) ->
   Rand = rand:uniform() * 100,
-  case Rand < ?CHANCE_FOR_ACCEPTANCE of
+  case Rand < ?CHANCE_OF_ACCEPTANCE of
     true ->
-      taxi:start_link(utils:random_coords(), TaxiDBAccess),
-      {reply, application_accepted, TaxiDBAccess};
+      taxi_supervisor:add_taxi(TaxiSup),
+      {reply, application_accepted, TaxiSup};
     false ->
-      {reply, application_rejected, TaxiDBAccess}
+      {reply, application_rejected, TaxiSup}
   end;
 
-handle_call(_Msg, _From, TaxiDBAccess) -> {noreply, TaxiDBAccess}.
+handle_call(Msg, _From, TaxiSup) -> {reply, {unsupported_message, Msg}, TaxiSup}.
 
-handle_cast(_Msg, TaxiDBAccess) -> {noreply, TaxiDBAccess}.
+handle_cast(_Msg, TaxiSup) -> {noreply, TaxiSup}.
 
-handle_info(_Info, TaxiDBAccess) -> {noreply, TaxiDBAccess}.
+handle_info(_Info, TaxiSup) -> {noreply, TaxiSup}.
 
-terminate(_Reason, _TaxiDBAccess) -> ok.
+terminate(_Reason, _TaxiSup) -> ok.
 
-code_change(_OldVsn, TaxiDBAccess, _Extra) -> {ok, TaxiDBAccess}.
+code_change(_OldVsn, TaxiSup, _Extra) -> {ok, TaxiSup}.

@@ -1,4 +1,4 @@
--module(order_receiver_supervisor).
+-module(first_level_supervisor).
 
 -behaviour(supervisor).
 
@@ -25,19 +25,15 @@ start_link() ->
 %%%===================================================================
 
 init([]) ->
-  SupFlags = #{strategy => one_for_one, intensity => 1, period => 5},
-  Receivers = create_receivers(),
-  {ok, {SupFlags, Receivers}}.
+  SupFlags = #{strategy => one_for_one, intensity => 1, period => 10},
+  TaxiSups = create_taxi_sups(?CITIES_NUMBER),
+  {ok, {SupFlags, TaxiSups}}.
 
 %%%===================================================================
 %%% Internal functions
 %%%===================================================================
 
-create_receivers() ->
-  lists:flatmap(fun(Pid) -> create_receivers_for_city(Pid, ?RECEIVERS_PER_CITY) end,
-    utils:get_supervisor_children_pids(first_level_supervisor)).
-
-create_receivers_for_city(TaxiSup, RecPerCity) when is_integer(RecPerCity)
-    andalso RecPerCity > 0 ->
-  [utils:create_child_spec(order_receiver, worker, [#taxi_sup{pid=TaxiSup}])
-    || _ <- lists:seq(1, RecPerCity)].
+create_taxi_sups(NumberOfCities) when is_integer(NumberOfCities)
+    andalso NumberOfCities > 0 ->
+  [utils:create_child_spec(taxi_supervisor, supervisor)
+    || _ <- lists:seq(1, NumberOfCities)].

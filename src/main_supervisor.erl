@@ -27,8 +27,7 @@ init([]) ->
 
   StatsGS = utils:create_child_spec(stats, worker),
   PanelGS = utils:create_child_spec(panel, worker),
-  TaxiDBAccessSup = utils:create_child_spec(taxi_database_access_supervisor, supervisor),
-  TaxiDBSup = utils:create_child_spec(taxi_database_supervisor, supervisor),
+  FirstLvlSup = utils:create_child_spec(first_level_supervisor, supervisor),
   SecondLvlSup = utils:create_child_spec(second_level_supervisor, supervisor),
 
-  {ok, {SupFlags, [StatsGS, PanelGS, TaxiDBAccessSup, TaxiDBSup, SecondLvlSup]}}.
+  {ok, {SupFlags, [StatsGS, PanelGS, FirstLvlSup, SecondLvlSup]}}.

@@ -1,46 +1,49 @@
 -record(coords, {x, y}).
 -record(hr_office, {pid}).
 -record(order_receiver, {pid}).
--record(taxi_db_access, {pid}).
--record(taxi_db, {pid}).
+-record(taxi_sup, {pid}).
 
 -define(DEBUG, off).
+% TERAZ JEST SUPER
+-define(CITY_WIDTH, 800). % meters
+-define(CITY_LENGTH, 800).
 
--define(CITY_WIDTH, 500). % meters
--define(CITY_LENGTH, 500).
-
--define(CITIES_NUMBER, 10).
--define(TAXI_DB_PER_CITY, 3).
+-define(CITIES_NUMBER, 40).
 -define(RECEIVERS_PER_CITY, 3).
 
--define(INITIAL_TAXI_PER_CITY_NUMBER, 20).
+-define(INITIAL_TAXI_PER_CITY_NUMBER, 400).
+
+-define(MAX_DISTANCE_TO_CLIENT, 300). % meters
 
 % taxi
--define(WORK_TIME, 15000). % miliseconds
--define(BREAK_TIME, 15000).
+-define(MIN_WORK_TIME, 10000). % miliseconds
+-define(MAX_WORK_TIME, 30000).
+-define(MIN_BREAK_TIME, 6000).
+-define(MAX_BREAK_TIME, 25000).
 -define(SPEED, 11). % meters per second
--define(MAX_JOB_LENGTH, 150). % meters
+-define(MAX_JOB_LENGTH, 600). % meters
 
 % client
--define(MIN_ORDER_INTERVAL, 5000). % miliseconds
--define(MAX_ORDER_INTERVAL, 20000).
+-define(MIN_ORDER_INTERVAL, 100). % miliseconds
+-define(MAX_ORDER_INTERVAL, 700).
 
 % hr_office
--define(CHANCE_FOR_ACCEPTANCE, 5). % procents
+-define(CHANCE_OF_ACCEPTANCE, 15). % procents
 
 % applicant
--define(MIN_APPLICATION_INTERVAL, 4000). % miliseconds
--define(MAX_APPLICATION_INTERVAL, 20000).
+-define(MIN_APPLICATION_INTERVAL, 300). % miliseconds
+-define(MAX_APPLICATION_INTERVAL, 1000).
 
 % client_supervisor
--define(CLIENTS_NUMBER, 50). % this is the total number of clients which will be shared between all cities
+-define(CLIENTS_NUMBER, 160). % total number of clients to split between all the cities
 
 % applicant_supervisor
--define(APPLICANTS_NUMBER, 3).
+-define(APPLICANTS_NUMBER, 80).
 
 % panel
 -define(REFRESH_INTERVAL, 1000). % miliseconds
 -define(FUEL_LITER_COST, 4.65). % PLN
 -define(ORDER_CONST_COST, 7). % PLN
 -define(ONE_KM_COST, 1.9). % PLN
--define(LITERS_PER_KM, 6).
+-define(LITERS_PER_KM, 11).
+-define(DAY_WAGE, 5). % PLN

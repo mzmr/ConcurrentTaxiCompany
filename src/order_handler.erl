@@ -3,23 +3,22 @@
 -include("app_config.hrl").
 
 %% API
--export([handle_order/2]).
+-export([handle_order/3]).
 
 
 %%%===================================================================
 %%% API
 %%%===================================================================
 
-handle_order(ClientCoords, #taxi_db_access{pid=P})
-    when is_record(ClientCoords, coords) andalso is_pid(P) ->
+handle_order(ClientCoords, #taxi_sup{pid=P}, Receiver) when is_pid(Receiver)
+    andalso is_record(ClientCoords, coords) andalso is_pid(P) ->
   utils:log_creating_process(?MODULE),
-  #taxi_db{pid=TaxiDB} = taxi_database_access:get_taxi_db(P),
-  Taxis = taxi_database:get_taxis(TaxiDB),
+  Taxis = taxi_supervisor:get_taxis(P),
   DistanceFun = fun(T) -> distance_to_client(T, ClientCoords) end,
   Distances = utils:concurrent_map(DistanceFun, Taxis),
   Available = lists:filter(fun({_,D}) -> D /= busy end, Distances),
   Sorted = lists:sort(fun({_,A}, {_,B}) -> A < B end, Available),
-  offer_next(Sorted, ClientCoords).
+  Receiver ! offer_next(Sorted, ClientCoords).
 
 
 %%%===================================================================
@@ -33,6 +32,10 @@ distance_to_client(Taxi, ClientCoords) ->
   end.
 
 offer_next([], _ClientCoords) ->
+  rejected;
+
+offer_next([{_TaxiPid, Distance} | _T], _ClientCoords)
+    when Distance > ?MAX_DISTANCE_TO_CLIENT ->
   rejected;
 
 offer_next([{TaxiPid, _Distance} | T], ClientCoords) ->

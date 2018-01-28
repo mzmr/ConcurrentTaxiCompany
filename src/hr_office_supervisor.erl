@@ -26,15 +26,13 @@ start_link() ->
 
 init([]) ->
   SupFlags = #{strategy => one_for_one, intensity => 1, period => 5},
-  DBAccessesPids = utils:get_supervisor_children_pids(taxi_database_access_supervisor),
-  {ok, {SupFlags, create_offices(DBAccessesPids)}}.
+  TaxiSupervisors = utils:get_supervisor_children_pids(first_level_supervisor),
+  {ok, {SupFlags, create_offices(TaxiSupervisors)}}.
 
 %%%===================================================================
 %%% Internal functions
 %%%===================================================================
 
-create_offices(DBAccesses) ->
-  Fun = fun(P) ->
-          utils:create_child_spec(hr_office, worker, [#taxi_db_access{pid=P}])
-        end,
-  lists:map(Fun, DBAccesses).
+create_offices(TaxiSupervisors) ->
+  [utils:create_child_spec(hr_office, worker, [#taxi_sup{pid=P}])
+    || P <- TaxiSupervisors].

@@ -36,16 +36,16 @@ init(HrOffice) ->
   erlang:send_after(Interval, self(), apply_for_job),
   {ok, HrOffice}.
 
-handle_call(_Msg, _From, HrOffice) ->
-  {noreply, HrOffice}.
+handle_call(Msg, _From, HrOffice) ->
+  {reply, {unsupported_message, Msg}, HrOffice}.
 
 handle_cast(_Msg, HrOffice) -> {noreply, HrOffice}.
 
 handle_info(apply_for_job, HrOffice) ->
-  spawn(?MODULE, run_applicant, [HrOffice]),
   Interval = round(utils:random_number(?MIN_APPLICATION_INTERVAL,
     ?MAX_APPLICATION_INTERVAL)),
   erlang:send_after(Interval, self(), apply_for_job),
+  spawn(?MODULE, run_applicant, [HrOffice]),
   {noreply, HrOffice};
 
 handle_info(_Info, HrOffice) -> {noreply, HrOffice}.

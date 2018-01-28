@@ -10,10 +10,12 @@
   taxi_driving_with_client_number = 0,
   taxi_driving_from_client_number = 0,
   orders_accepted = 0,
+  orders_rejected = 0,
   orders_in_progress = 0,
   orders_finished = 0,
   total_distance_driven = 0,
-  distance_driven_with_client = 0
+  distance_driven_with_client = 0,
+  day_wages_number = 0
   }).
 
 %% API
@@ -25,9 +27,11 @@
   finished_order/0,
   started_order/0,
   accepted_order/0,
+  rejected_order/0,
   driven_total/1,
   driven_with_client/1,
   get_accepted_orders_number/0,
+  get_rejected_orders_number/0,
   get_distance_driven_with_client/0,
   get_driving_from_client_taxi_number/0,
   get_driving_to_client_taxi_number/0,
@@ -37,7 +41,8 @@
   get_inactive_taxi_number/0,
   get_taxi_number/0,
   get_total_distance_driven/0,
-  get_waiting_taxi_number/0]).
+  get_waiting_taxi_number/0,
+  get_day_wages_number/0]).
 
 %% gen_server callbacks
 -export([init/1,
@@ -69,6 +74,9 @@ changed_taxi_state(NewState, OldState) ->
 
 accepted_order() ->
   gen_server:call(?SERVER, accepted_order).
+
+rejected_order() ->
+  gen_server:call(?SERVER, rejected_order).
 
 started_order() ->
   gen_server:call(?SERVER, started_order).
@@ -104,6 +112,9 @@ get_driving_from_client_taxi_number() ->
 get_accepted_orders_number() ->
   gen_server:call(?SERVER, get_accepted_orders_number).
 
+get_rejected_orders_number() ->
+  gen_server:call(?SERVER, get_rejected_orders_number).
+
 get_in_progress_orders_number() ->
   gen_server:call(?SERVER, get_in_progress_orders_number).
 
@@ -115,6 +126,9 @@ get_total_distance_driven() ->
 
 get_distance_driven_with_client() ->
   gen_server:call(?SERVER, get_distance_driven_with_client).
+
+get_day_wages_number() ->
+  gen_server:call(?SERVER, get_day_wages_number).
 
 
 stop() ->
@@ -146,6 +160,9 @@ handle_call(finished_order, _From, Data) ->
 
 handle_call(accepted_order, _From, Data) ->
   {reply, ok, Data#data{orders_accepted = Data#data.orders_accepted + 1}};
+
+handle_call(rejected_order, _From, Data) ->
+  {reply, ok, Data#data{orders_rejected = Data#data.orders_rejected + 1}};
 
 handle_call(started_order, _From, Data) ->
   {reply, ok, Data#data{orders_in_progress = Data#data.orders_in_progress + 1}};
@@ -182,6 +199,9 @@ handle_call(get_driving_from_client_taxi_number, _From, Data) ->
 handle_call(get_accepted_orders_number, _From, Data) ->
   {reply, Data#data.orders_accepted, Data};
 
+handle_call(get_rejected_orders_number, _From, Data) ->
+  {reply, Data#data.orders_rejected, Data};
+
 handle_call(get_in_progress_orders_number, _From, Data) ->
   {reply, Data#data.orders_in_progress, Data};
 
@@ -193,6 +213,9 @@ handle_call(get_total_distance_driven, _From, Data) ->
 
 handle_call(get_distance_driven_with_client, _From, Data) ->
   {reply, Data#data.distance_driven_with_client, Data};
+
+handle_call(get_day_wages_number, _From, Data) ->
+  {reply, Data#data.day_wages_number, Data};
 
 handle_call(Request, _From, Data) ->
   {reply, Request, Data}.
@@ -208,8 +231,13 @@ code_change(_OldVsn, Data, _Extra) -> {ok, Data}.
 
 
 change_state(inactive, Diff, Data) ->
-  Data#data{taxi_inactive_number =
-      Data#data.taxi_inactive_number + Diff};
+  NewWages = case Diff of
+    1 -> 1;
+    _ -> 0
+  end,
+  Data#data{
+    taxi_inactive_number = Data#data.taxi_inactive_number + Diff,
+    day_wages_number = Data#data.day_wages_number + NewWages };
 
 change_state(waiting, Diff, Data) ->
   Data#data{taxi_waiting_number =

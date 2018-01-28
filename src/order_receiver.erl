@@ -21,9 +21,9 @@
 %%% API
 %%%===================================================================
 
-start_link(TaxiDBAccess=#taxi_db_access{pid=P}) when is_pid(P) ->
+start_link(TaxiSup=#taxi_sup{pid=P}) when is_pid(P) ->
   utils:log_creating_process(?MODULE),
-  gen_server:start_link(?MODULE, TaxiDBAccess, []).
+  gen_server:start_link(?MODULE, TaxiSup, []).
 
 order_taxi(Receiver, Coords) when is_pid(Receiver)
     andalso is_record(Coords, coords) ->
@@ -37,21 +37,34 @@ stop(Receiver) when is_pid(Receiver) ->
 %%% private functions
 %%%===================================================================
 
-init(TaxiDBAccess) ->
-  {ok, TaxiDBAccess}.
+init(TaxiSup) ->
+  {ok, TaxiSup}.
 
-handle_call({order_taxi, Coords}, _From, TaxiDBAccess) ->
-  stats:accepted_order(),
-  spawn(order_handler, handle_order, [Coords, TaxiDBAccess]),
-  {reply, {order_accepted, Coords}, TaxiDBAccess};
+handle_call({order_taxi, Coords}, _From, TaxiSup) ->
+  spawn(order_handler, handle_order, [Coords, TaxiSup, self()]),
+  Response = read_response(),
+  case Response of
+    accepted ->
+      stats:accepted_order(),
+      {reply, order_accepted, TaxiSup};
+    _ ->
+      stats:rejected_order(),
+      {reply, order_rejected, TaxiSup}
+  end;
 
-handle_call(_Msg, _From, TaxiDBAccess) -> {noreply, TaxiDBAccess}.
+handle_call(Msg, _From, TaxiSup) -> {reply, {unsupported_message, Msg}, TaxiSup}.
 
 
-handle_cast(_Msg, TaxiDBAccess) -> {noreply, TaxiDBAccess}.
+handle_cast(_Msg, _TaxiSup) -> {noreply, _TaxiSup}.
 
-handle_info(_Info, TaxiDBAccess) -> {noreply, TaxiDBAccess}.
+handle_info(_Info, _TaxiSup) -> {noreply, _TaxiSup}.
 
-terminate(_Reason, _TaxiDBAccess) -> ok.
+terminate(_Reason, _TaxiSup) -> ok.
 
-code_change(_OldVsn, TaxiDBAccess, _Extra) -> {ok, TaxiDBAccess}.
+code_change(_OldVsn, TaxiSup, _Extra) -> {ok, TaxiSup}.
+
+read_response() ->
+  receive
+    accepted -> accepted;
+    rejected -> rejected
+  end.

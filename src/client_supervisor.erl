@@ -25,7 +25,7 @@ start_link() ->
 %%%===================================================================
 
 init([]) ->
-  SupFlags = #{strategy => one_for_one, intensity => 2, period => 5},
+  SupFlags = #{strategy => one_for_one, intensity => 5, period => 5},
   ReceiversPids = utils:get_supervisor_children_pids(order_receiver_supervisor),
   Receivers = assign_clients_to_cities(ReceiversPids),
   ChildSpecs = lists:flatmap(fun({R,N}) -> create_clients(N, R) end, Receivers),

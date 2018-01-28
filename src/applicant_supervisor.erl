@@ -44,7 +44,7 @@ assign_applicants_to_cities(HrOffices) ->
 create_applicants(ApplicantsNumber, HrOffice) when is_integer(ApplicantsNumber)
     andalso ApplicantsNumber > 0 ->
   [utils:create_child_spec(applicant, worker, [#hr_office{pid=HrOffice}])
-    || _X <- lists:seq(1, ApplicantsNumber)];
+    || _ <- lists:seq(1, ApplicantsNumber)];
 
 create_applicants(_ApplicantsNumber, _HrOffice) ->
   [].

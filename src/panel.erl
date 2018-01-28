@@ -15,9 +15,8 @@
   terminate/2,
   code_change/3]).
 
-
-
 -define(SERVER, ?MODULE).
+-define(PARAMS_WIDTH, 15).
 
 %%%===================================================================
 %%% API
@@ -36,7 +35,7 @@ init([]) ->
     on -> ok;
     _ ->
       print_description(),
-      erlang:send_after(?REFRESH_INTERVAL, self(), refresh_panel)
+      send_refresh_request(?REFRESH_INTERVAL)
   end,
   {ok, []}.
 
@@ -45,7 +44,7 @@ handle_call(_Msg, _From, Data) -> {noreply, Data}.
 handle_cast(_Msg, Data) -> {noreply, Data}.
 
 handle_info(refresh_panel, Data) ->
-  erlang:send_after(?REFRESH_INTERVAL, self(), refresh_panel),
+  send_refresh_request(?REFRESH_INTERVAL),
   refresh(),
   {noreply, Data};
 
@@ -59,56 +58,68 @@ code_change(_OldVsn, Data, _Extra) -> {ok, Data}.
 %%% private functions
 %%%===================================================================
 
+send_refresh_request(Interval) when is_integer(Interval) ->
+  erlang:send_after(Interval, self(), refresh_panel).
+
 print_description() ->
   L = 1,
   Description = [
     clear(),
-    printxy({L,1}, "TAXIS"),
-    printxy({L,2}, " - Total:"),
-    printxy({L,3}, " - Waiting:"),
-    printxy({L,4}, " - Inactive:"),
-    printxy({L,5}, " - Driving to clients:"),
-    printxy({L,6}, " - Driving with clients:"),
-    printxy({L,7}, " - Driving from clients:"),
-    printxy({L,9}, "ORDERS"),
-    printxy({L,10}, " - Total/accepted:"),
-    printxy({L,11}, " - In progress:"),
-    printxy({L,12}, " - Finished:"),
-    printxy({L,14}, "DRIVEN DISTANCE [KM]"),
-    printxy({L,15}, " - Total:"),
-    printxy({L,16}, " - With clients:"),
-    printxy({L,18}, "FINANCE [PLN]"),
-    printxy({L,19}, " - Income:"),
-    printxy({L,20}, " - Expenditure:"),
-    printxy({L,21}, " - Balance:"),
-    goto({L,23})
+    set_xy({L,1}, "TAXIS"),
+    set_xy({L,2}, " - Total:"),
+    set_xy({L,3}, " - Waiting:"),
+    set_xy({L,4}, " - Inactive:"),
+    set_xy({L,5}, " - Driving to clients:"),
+    set_xy({L,6}, " - Driving with clients:"),
+    set_xy({L,7}, " - Driving from clients:"),
+    set_xy({L,9}, "ORDERS"),
+    set_xy({L,10}, " - Total:"),
+    set_xy({L,11}, " - Accepted:"),
+    set_xy({L,12}, " - Rejected:"),
+    set_xy({L,13}, " - In progress:"),
+    set_xy({L,14}, " - Finished:"),
+    set_xy({L,16}, "DRIVEN DISTANCE [KM]"),
+    set_xy({L,17}, " - Total:"),
+    set_xy({L,18}, " - With clients:"),
+    set_xy({L,20}, "FINANCE [PLN]"),
+    set_xy({L,21}, " - Income:"),
+    set_xy({L,22}, " - Expenditure:"),
+    set_xy({L,23}, " - Balance:"),
+    goto({L,25})
   ],
   io:format(lists:flatten(Description)).
 
 refresh() ->
-  R = 30,
+  R = 25,
+  OrdersAccepted = stats:get_accepted_orders_number(),
+  OrdersRejected = stats:get_rejected_orders_number(),
+  TotalOrders = OrdersAccepted + OrdersRejected,
   TotalDriven = stats:get_total_distance_driven() / 1000,
   DrivenWithClients = stats:get_distance_driven_with_client() / 1000,
   FinishedOrders = stats:get_finished_orders_number(),
   Income = FinishedOrders * ?ORDER_CONST_COST + DrivenWithClients * ?ONE_KM_COST,
-  Expenditure = TotalDriven * ?FUEL_LITER_COST * ?LITERS_PER_KM / 100,
+  Wages = stats:get_day_wages_number(),
+  Expenditure = TotalDriven * ?FUEL_LITER_COST * ?LITERS_PER_KM / 100
+    + Wages * ?DAY_WAGE,
   Balance = Income - Expenditure,
   Summary = [
-    printxy({R,2}, stats:get_taxi_number()),
-    printxy({R,3}, stats:get_waiting_taxi_number()),
-    printxy({R,4}, stats:get_inactive_taxi_number()),
-    printxy({R,5}, stats:get_driving_to_client_taxi_number()),
-    printxy({R,6}, stats:get_driving_with_client_taxi_number()),
-    printxy({R,7}, stats:get_driving_from_client_taxi_number()),
-    printxy({R,10}, stats:get_accepted_orders_number()),
-    printxy({R,11}, stats:get_in_progress_orders_number()),
-    printxy({R,12}, FinishedOrders),
-    printxy({R,15}, round_2_places(TotalDriven)),
-    printxy({R,16}, round_2_places(DrivenWithClients)),
-    printxy({R,19}, round_2_places(Income)),
-    printxy({R,20}, round_2_places(Expenditure)),
-    printxy({R,21}, round_2_places(Balance)),
-    goto({1,23})
+    set_xy_and_format({R,2}, stats:get_taxi_number()),
+    set_xy_and_format({R,3}, stats:get_waiting_taxi_number()),
+    set_xy_and_format({R,4}, stats:get_inactive_taxi_number()),
+    set_xy_and_format({R,5}, stats:get_driving_to_client_taxi_number()),
+    set_xy_and_format({R,6}, stats:get_driving_with_client_taxi_number()),
+    set_xy_and_format({R,7}, stats:get_driving_from_client_taxi_number()),
+    set_xy_and_format({R,10}, TotalOrders),
+    set_xy_and_format({R,11}, OrdersAccepted),
+    set_xy_and_format({R,12}, OrdersRejected),
+    set_xy_and_format({R,13}, stats:get_in_progress_orders_number()),
+    set_xy_and_format({R,14}, FinishedOrders),
+    set_xy_and_format({R,17}, TotalDriven),
+    set_xy_and_format({R,18}, DrivenWithClients),
+    set_xy_and_format({R,21}, Income),
+    set_xy_and_format({R,22}, Expenditure),
+    set_xy_and_format({R,23}, Balance),
+    goto({1,25})
   ],
   io:format(lists:flatten(Summary)).
 
@@ -121,8 +132,28 @@ clear() ->
 goto({X, Y}) ->
   io_lib:format("\e[~p;~pH",[Y,X]).
 
-printxy({X, Y}, Msg) when is_list(Msg)->
+set_xy({X, Y}, Msg) when is_list(Msg) ->
   io_lib:format("\e[~p;~pH" ++ Msg, [Y,X]);
 
-printxy({X, Y}, Msg) ->
-  io_lib:format("\e[~p;~pH~p                    ",[Y,X,Msg]).
+set_xy(_Coords, Msg) ->
+  io_lib:format("[panel] Error: ~p should be a number or a list.", [Msg]).
+
+set_xy_and_format(Coords, Msg) when is_integer(Msg) ->
+  NumString = integer_to_list(Msg),
+  Txt = fill_txt_margins(?PARAMS_WIDTH - 3 - length(NumString), 3, NumString),
+  set_xy(Coords, Txt);
+
+set_xy_and_format(Coords, Msg) when is_float(Msg) ->
+  NumString = round_2_places(Msg),
+  Txt = fill_txt_margins(?PARAMS_WIDTH - length(NumString), 0, NumString),
+  set_xy(Coords, Txt);
+
+set_xy_and_format(Coords, Msg) when is_list(Msg) ->
+  Txt = fill_txt_margins(?PARAMS_WIDTH - length(Msg), 0, Msg),
+  set_xy(Coords, Txt).
+
+fill_txt_margins(Left, Right, Text) ->
+  lists:concat([space_list(Left), Text, space_list(Right)]).
+
+space_list(Length) when Length >= 0 ->
+  [32 || _ <- lists:seq(0, Length)]. % 32 is the ASCII code for space character

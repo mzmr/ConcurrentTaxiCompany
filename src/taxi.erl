@@ -5,10 +5,10 @@
 -include("app_config.hrl").
 
 -record(client, {from, to}).
--record(data, {home, db_access, client=#client{}, return_timer}).
+-record(data, {home, client=#client{}, return_timer}).
 
 %% API
--export([start_link/2,
+-export([start_link/1,
   stop/1,
   get_position/1,
   offer_job/2]).
@@ -30,10 +30,9 @@
 %%% API
 %%%===================================================================
 
-start_link(Home, #taxi_db_access{pid=P}) when is_record(Home, coords)
-    andalso is_pid(P) ->
+start_link(Home) when is_record(Home, coords) ->
   utils:log_creating_process(?MODULE),
-  gen_statem:start_link(?MODULE, [Home, P], []).
+  gen_statem:start_link(?MODULE, Home, []).
 
 stop(Taxi) when is_pid(Taxi) ->
   gen_statem:stop(Taxi).
@@ -49,11 +48,10 @@ offer_job(Taxi, ClientCoords) when is_record(ClientCoords, coords)
 %%% private functions
 %%%===================================================================
 
-init([Home, TaxiDBAccess]) ->
+init(Home) ->
   stats:created_taxi(),
-  register_to_db(TaxiDBAccess),
   process_flag(trap_exit, true),
-  {ok, waiting, #data{home=Home, db_access=TaxiDBAccess}}.
+  {ok, waiting, #data{home=Home}}.
 
 callback_mode() ->
   [state_functions, state_enter].
@@ -63,7 +61,8 @@ waiting(enter, OldState, Data) when OldState == inactive
     orelse OldState == waiting ->
   entered_state(waiting, OldState),
   NewData = Data#data{client=#client{}, return_timer=undefined},
-  Timeout = {{timeout,end_of_work_tm}, ?WORK_TIME, finish_work},
+  WorkTime = round(utils:random_number(?MIN_WORK_TIME, ?MAX_WORK_TIME)),
+  Timeout = {{timeout,end_of_work_tm}, WorkTime, finish_work},
   {keep_state, NewData, [Timeout]};
 
 waiting(enter, OldState, _Data) ->
@@ -192,9 +191,8 @@ reply_busy(From) ->
 reject_job(From) ->
   {keep_state_and_data, [{reply, From, job_rejected}]}.
 
-terminate(_Reason, _State, #data{db_access=DBA}) ->
+terminate(_Reason, _State, _Data) ->
   stats:terminated_taxi(),
-  unregister_from_db(DBA),
   ok.
 
 code_change(_Vsn, State, Data, _Extra) ->
@@ -204,12 +202,17 @@ time_distance(Distance) ->
   round(Distance / ?SPEED * 1000).
 
 unsupported_event(EventType, EventContent, State) ->
-  io:format("[taxi] Unsupported event:~nType: ~p~nContent: ~p~nCurrent state: ~p~n",
-    [EventType, EventContent, State]),
+  case ?DEBUG of
+    on ->
+      io:format("[taxi] Unsupported event:~nType: ~p~n"
+      ++ "Content: ~p~nCurrent state: ~p~n", [EventType, EventContent, State]);
+    _ -> ok
+  end,
   keep_state_and_data.
 
 finish_work(Data) ->
-  Timeout = {{timeout,end_of_break_tm}, ?BREAK_TIME, start_work},
+  BreakTime = round(utils:random_number(?MIN_BREAK_TIME, ?MAX_BREAK_TIME)),
+  Timeout = {{timeout,end_of_break_tm}, BreakTime, start_work},
   {next_state, inactive, Data, [Timeout]}.
 
 current_position(#data{home=H, client=#client{to=To}, return_timer=Tmr}) ->
@@ -220,7 +223,14 @@ current_position(#data{home=H, client=#client{to=To}, return_timer=Tmr}) ->
 
 percentage_of_return(Distance, Timer) ->
   FullTime = time_distance(Distance),
-  1 - erlang:read_timer(Timer) / FullTime.
+  case FullTime of
+    0 -> 1;
+    _ ->
+      case erlang:read_timer(Timer) of
+        false -> 1;
+        T -> 1 - T / FullTime
+      end
+  end.
 
 accept_job(MyPos, ClientPos, From, Data=#data{client=C}) ->
   stats:started_order(),
@@ -234,16 +244,3 @@ accept_job(MyPos, ClientPos, From, Data=#data{client=C}) ->
 entered_state(NewState, OldState) ->
 %%  io:format("[taxi][~p] Entering ~p state~n", [self(), NewState]),
   stats:changed_taxi_state(NewState, OldState).
-
-register_to_db(TaxiDBAccess) ->
-  TaxiPid = self(),
-  AddNewTaxiFun = fun(DB) -> taxi_database:add_taxi(DB, TaxiPid) end,
-  TaxiDBs = taxi_database_access:get_all_taxi_db(TaxiDBAccess),
-  utils:concurrent_map(AddNewTaxiFun, TaxiDBs),
-  ok.
-
-unregister_from_db(TaxiDBAccess) ->
-  RmTaxiFun = fun(DB) -> taxi_database:remove_taxi(DB, self()) end,
-  TaxiDBs = taxi_database_access:get_all_taxi_db(TaxiDBAccess),
-  utils:concurrent_map(RmTaxiFun, TaxiDBs),
-  ok.
