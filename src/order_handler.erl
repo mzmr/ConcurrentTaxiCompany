@@ -18,7 +18,10 @@ handle_order(ClientCoords, #taxi_sup{pid=P}, Receiver) when is_pid(Receiver)
   Distances = utils:concurrent_map(DistanceFun, Taxis),
   Available = lists:filter(fun({_,D}) -> D /= busy end, Distances),
   Sorted = lists:sort(fun({_,A}, {_,B}) -> A < B end, Available),
-  Receiver ! offer_next(Sorted, ClientCoords).
+  case offer_next(Sorted, ClientCoords) of
+    accepted -> stats:accepted_order();
+    _ -> stats:rejected_order()
+  end.
 
 
 %%%===================================================================

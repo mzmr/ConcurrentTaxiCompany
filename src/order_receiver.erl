@@ -27,7 +27,7 @@ start_link(TaxiSup=#taxi_sup{pid=P}) when is_pid(P) ->
 
 order_taxi(Receiver, Coords) when is_pid(Receiver)
     andalso is_record(Coords, coords) ->
-  gen_server:call(Receiver, {order_taxi, Coords}).
+  gen_server:cast(Receiver, {order_taxi, Coords}).
 
 stop(Receiver) when is_pid(Receiver) ->
   gen_server:stop(Receiver).
@@ -40,31 +40,16 @@ stop(Receiver) when is_pid(Receiver) ->
 init(TaxiSup) ->
   {ok, TaxiSup}.
 
-handle_call({order_taxi, Coords}, _From, TaxiSup) ->
+handle_cast({order_taxi, Coords}, TaxiSup) ->
   spawn(order_handler, handle_order, [Coords, TaxiSup, self()]),
-  Response = read_response(),
-  case Response of
-    accepted ->
-      stats:accepted_order(),
-      {reply, order_accepted, TaxiSup};
-    _ ->
-      stats:rejected_order(),
-      {reply, order_rejected, TaxiSup}
-  end;
-
-handle_call(Msg, _From, TaxiSup) -> {reply, {unsupported_message, Msg}, TaxiSup}.
-
+  {noreply, TaxiSup};
 
 handle_cast(_Msg, _TaxiSup) -> {noreply, _TaxiSup}.
+
+handle_call(Msg, _From, TaxiSup) -> {reply, {unsupported_message, Msg}, TaxiSup}.
 
 handle_info(_Info, _TaxiSup) -> {noreply, _TaxiSup}.
 
 terminate(_Reason, _TaxiSup) -> ok.
 
 code_change(_OldVsn, TaxiSup, _Extra) -> {ok, TaxiSup}.
-
-read_response() ->
-  receive
-    accepted -> accepted;
-    rejected -> rejected
-  end.
